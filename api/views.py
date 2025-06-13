@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import Q
 from . import models
 from .serializers import PostSerializer
 
@@ -9,8 +10,18 @@ from .serializers import PostSerializer
 
 class PostsView(APIView):
 
-    def get(self, request, pk=None):
-
+    def get(self, request):
+        term = request.query_params.get("term", None)
+        if term:
+            post = models.Post.objects.filter(
+                Q(title__contains=term)
+                or Q(content__contains=term)
+                or Q(category__contains=term)
+                or Q(tags__name__contains=term)
+            )
+            if post.exists():
+                serializer = PostSerializer(post, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
         posts = models.Post.objects.all()
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
